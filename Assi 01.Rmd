@@ -1,0 +1,168 @@
+---
+title: "Assignment 1-ADM"
+author: "Chathurani Ekanayake"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+
+# Part B
+This part of the assignment involves building generalized linear regression models to answer a number of
+questions. We will use the Carseats dataset that is part of the ISLR package (you need to install and load 
+the library). We may also need the following packages: caret, dplyr and glmnet.
+```{r}
+library(ISLR)
+library(dplyr)
+library(glmnet)
+library(caret)
+```
+
+Load the carsetas datset 
+```{r}
+Data <- Carseats
+```
+
+# Selecting the necessary attributes out of the Carseats dataset.
+```{r}
+Carseats_filtered<- Data%>% select("Sales","Price","Advertising","Population","Age","Income","Education")
+```
+
+# checking for null values 
+```{r}
+colMeans(is.na(Carseats_filtered))
+```
+# Checking the structure of the dataset
+```{r}
+str(Carseats_filtered)
+```
+# Checking the summary of the dataset 
+```{r}
+summary(Carseats)
+```
+
+# QB1. Build a Lasso regression model to predict Sales based on all other attributes ("Price", "Advertising", "Population", "Age", "Income" and "Education"). What is the best value of lambda for such a lasso model? (Hint1: Do not forget to scale your input attributes – you can use the caret preprocess() function to scale and center the data. Hint 2: glment library expect the input attributes to be in the matrix format. You can use the as.matrix() function for converting)
+
+# Data Normalization 
+```{r}
+set.seed(456)
+Normalized_Carsets<-preProcess(Carseats_filtered[,-1],method = c("scale","center"))
+Norm_car <- predict(Normalized_Carsets,Carseats_filtered)
+```
+
+# Data Transformation
+##Input attributes-Matrix format 
+```{r}
+train_A <-as.matrix(Norm_car[2:7])
+```
+
+##Target variable
+```{r}
+train_B <- as.numeric(Norm_car$Sales)
+
+```
+
+# Building lasso regression model
+```{r}
+Lasso <- glmnet(train_A,train_B,alpha = 1)
+plot(Lasso,xvar="lambda")
+```
+```{r}
+set.seed(789)
+LR <- cv.glmnet(train_A, train_B, data = Norm_car, nfolds = 5, alpha = 1)
+LR
+```
+Through lambda.min we can know the lambda value that is optimal and minimizes the cross validation mean square of the error.
+# The best value of lambda
+```{r}
+LR$lambda.min
+```
+According to the above value 0.004 can be considered as the best lambda value for the lasso model which we have built.
+
+# Lambda 1SE
+```{r}
+LR$lambda.1se
+```
+# Checking the coefficients that were eliminated
+```{r}
+coef(LR,s="lambda.min")
+```
+When the lambda.min is 0.004305309 non of the attributes has been eliminated from the model. 
+
+```{r}
+coef(LR,s="lambda.1se")
+```
+When the lambda.1se is 0.2832606 two of the attributes have been eliminated from the model from the model.
+
+# Plotting the Model 
+```{r}
+plot(LR)
+```
+
+The Optimal (Min) and 1SE lambda values with respect to the above graph                                                                                                     
+```{r}
+lambda_min <- log(0.004305309)
+lambda_min
+```
+
+```{r}
+lambda_1se <- log(0.2832606)
+lambda_1se
+```
+# QB2. What is the coefficient for the price (normalized) attribute in the best model (i.e. model with the optimal lambda)? 
+
+```{r}
+coef(LR,s="lambda.min")
+```
+
+With the optimal lambda (lambda.min) the coefficient of the "price attribute" is -1.35383399.
+
+In this context, a coefficient of -1.35383399 for the "price" attribute suggests that for every one-unit increase in the "price" attribute, the model predicts a decrease of approximately 1.35383399 units in the dependent variable, assuming all other variables remain the same.
+
+
+# QB3. How many attributes remain in the model if lambda is set to 0.01? How that number changes if lambda is increased to 0.1? Do you expect more variables to stay in the model (i.e., to have non-zero coefficients) as we increase lambda? 
+
+#lambda = 0.01
+```{r}
+coef(LR, s="lambda.min")
+```
+When lambda (s) = 0.01 all the input attributes are remaining. 
+
+#lambda = 0.1
+```{r}
+coef(LR, s=0.1)
+```
+When lambda (s) is increased to 0.1, the attributes "Education" and "population" have been removed from the model. 
+
+Increasing lambda in regularized regression models like Lasso typically leads to fewer variables (attributes) with non-zero coefficients in the model. 
+
+As lambda increases, the regularization penalty becomes stronger, encouraging the model to simplify by assigning zero coefficients to less important features. The goal of regularization is to prevent overfitting by reducing the model's complexity and emphasizing the most important features. 
+
+
+# QB4. Build an elastic-net model with alpha set to 0.6. What is the best value of lambda for such a model? 
+```{r}
+LR2 <- cv.glmnet(train_A,train_B,data=Norm_car, nfolds = 10, alpha=0.6)
+LR2
+```
+# cv.glmnet()plot
+```{r}
+plot(LR2)
+```
+
+
+```{r}
+coef(LR2,s="lambda.min")
+```
+According to the above answer, the none of the attributes are eliminated when alpha is 0.6
+
+# Finding the optimal lambda
+```{r}
+LR2$lambda.min
+```
+Optimal value of lambda when alpha is 0.6 is 0.006538062
+
+
